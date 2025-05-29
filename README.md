@@ -17,13 +17,13 @@ import (
 )
 
 func main() {
-	// Wait for all forked children
-	defer nob.WaitAll()
+	s := nob.NewSession()
+	defer s.MustWaitAll()
 
-	cmd := nob.New("echo", "Hello, world!")
-	_, err := cmd.Run()
+	cmd := nob.Command("echo", "Hello, world!")
+	_, err := s.Run(cmd)
 	if err != nil {
-			panic(err)
+		panic(err)
 	}
 }
 ```
