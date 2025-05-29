@@ -1,7 +1,6 @@
 package nob
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -9,57 +8,76 @@ import (
 	"strings"
 )
 
-type Cmd struct {
-	buf []string
-	env []string
+type command struct {
+	name   string
+	args   []string
+	env    []string
+	stdout io.Writer
+	stderr io.Writer
 }
 
-func New(cmd ...string) *Cmd {
-	return &Cmd{buf: cmd}
+func Command(name string, args ...string) *command {
+	return &command{
+		name:   name,
+		args:   args,
+		stdout: os.Stdout, // stdout -> stdout
+		stderr: os.Stdout, // stderr -> stderr
+	}
 }
 
-func (c *Cmd) Append(cmd ...string) {
-	c.buf = append(c.buf, cmd...)
+func (c *command) WithEnv(env ...string) *command {
+	c.env = append(c.env, env...)
+	return c
 }
 
-func (c *Cmd) Appendf(format string, a ...any) {
+func (c *command) WithOutput(out, errOut io.Writer) *command {
+	c.stdout = out
+	c.stderr = errOut
+	return c
+}
+
+func (c *command) Append(cmd ...string) {
+	c.args = append(c.args, cmd...)
+}
+
+func (c *command) Appendf(format string, a ...any) {
 	s := fmt.Sprintf(format, a...)
-	c.buf = append(c.buf, s)
+	c.args = append(c.args, s)
 }
 
-func (c *Cmd) AppendEnv(v ...string) {
+func (c *command) AppendEnv(v ...string) {
 	c.env = append(c.env, v...)
 }
 
-func (c *Cmd) AppendfEnv(format string, a ...any) {
+func (c *command) AppendfEnv(format string, a ...any) {
 	s := fmt.Sprintf(format, a...)
 	c.env = append(c.env, s)
 }
 
-func (c *Cmd) Run() (*Child, error) {
-	rendered := strings.Join(c.buf, " ")
-	fmt.Println(rendered)
-
-	cmd := exec.Command(c.buf[0], c.buf[1:]...)
+func (c *command) CombinedOutput() ([]byte, error) {
+	cmd := exec.Command(c.name, c.args...)
 	cmd.Env = append(os.Environ(), c.env...)
+	return cmd.CombinedOutput()
+}
 
-	stdoutBuf := &bytes.Buffer{}
-	stderrBuf := &bytes.Buffer{}
+func (c *command) Render() string {
+	var n int
 
-	cmd.Stdout = io.MultiWriter(stdoutBuf, os.Stdout) // tee stdout -> stdout
-	cmd.Stderr = io.MultiWriter(stderrBuf, os.Stdout) // tee stderr -> stdout
+	n += len(c.name)
 
-	if err := cmd.Start(); err != nil {
-		return &Child{Stderr: stderrBuf}, err
+	for _, a := range c.args {
+		n += 1 + len(a) // space + len
 	}
 
-	child := &Child{
-		Cmd:    cmd,
-		Stdout: stdoutBuf,
-		Stderr: stderrBuf,
+	var b strings.Builder
+	b.Grow(n)
+
+	b.WriteString(c.name)
+
+	for _, a := range c.args {
+		b.WriteByte(' ')
+		b.WriteString(a)
 	}
 
-	cs.append(child)
-
-	return child, nil
+	return b.String()
 }
