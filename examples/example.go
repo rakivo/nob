@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	// wait for all forked children
+	// Wait for all forked children
 	defer nob.MustWaitAll()
 
 	cmd := nob.New("echo", "Hello, world!")
