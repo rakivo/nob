@@ -1,19 +1,11 @@
 package nob
 
-import (
-	"fmt"
-)
-
 var (
 	cs children
 )
 
 func (c *Child) Wait() error {
-	if err := c.Cmd.Wait(); err != nil {
-		fmt.Print(c.Stderr.String())
-		return err
-	}
-	return nil
+	return c.Cmd.Wait()
 }
 
 func (c *Child) MustWait() {
@@ -24,7 +16,7 @@ func (c *Child) MustWait() {
 
 func WaitAll() error {
 	for c := cs.pop(); c != nil; c = cs.pop() {
-		if err := c.Cmd.Wait(); err != nil {
+		if err := c.Wait(); err != nil {
 			return err
 		}
 	}
