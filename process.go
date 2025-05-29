@@ -19,4 +19,3 @@ func (p *Process) PID() int {
 	}
 	return 0
 }
-

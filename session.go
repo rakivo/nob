@@ -1,8 +1,8 @@
 package nob
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"sync"
@@ -81,4 +81,3 @@ func (s *Session) MustWaitAll() {
 		panic(err)
 	}
 }
-
