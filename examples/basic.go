@@ -16,7 +16,7 @@ func main() {
 	}
 
 	// same thing, but capturing output manually:
-	out, err := nob.Command("echo", "hello, world").CombinedOutput()
+	out, err := nob.CombinedOutput("echo", "hello, world")
 	if err != nil {
 		fmt.Printf("echo failed: %v\n", err)
 	} else {
