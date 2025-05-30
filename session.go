@@ -3,8 +3,6 @@ package nob
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"sync"
 )
 
@@ -19,20 +17,14 @@ func NewSession() *Session {
 	return &Session{}
 }
 
+func (s *Session) Pending() []*Process {
+	return s.pending
+}
+
 // starts cmd under ctx, streams live output if configured,
 // registers the resulting Process for later waiting.
-func (s *Session) RunContext(ctx context.Context, c *command) (*Process, error) {
-	raw := exec.CommandContext(ctx, c.name, c.args...)
-
-	raw.Env = append(os.Environ(), c.env...)
-
-	if c.stdout != nil {
-		raw.Stdout = c.stdout
-	}
-
-	if c.stderr != nil {
-		raw.Stderr = c.stderr
-	}
+func (s *Session) StartContext(ctx context.Context, c *command) (*Process, error) {
+	raw := c.Raw()
 
 	proc := &Process{cmd: raw}
 
@@ -50,8 +42,16 @@ func (s *Session) RunContext(ctx context.Context, c *command) (*Process, error) 
 	return proc, nil
 }
 
-func (s *Session) Run(c *command) (*Process, error) {
-	return s.RunContext(context.Background(), c)
+func (s *Session) Start(c *command) (*Process, error) {
+	return s.StartContext(context.Background(), c)
+}
+
+func (s *Session) MustStart(c *command) *Process {
+	p, err := s.Start(c)
+	if err != nil {
+		panic(err)
+	}
+	return p
 }
 
 // waits for every spawned process in LIFO order.
