@@ -3,8 +3,8 @@ package nob
 import (
 	"context"
 	"fmt"
-	"sync"
 	"os/exec"
+	"sync"
 )
 
 // tracks spawned processes and waits on them.
@@ -42,33 +42,33 @@ func (s *Session) MustStart(c *Cmd) *Process {
 
 // waits for every spawned process
 func (s *Session) WaitAll() error {
-    s.mu.Lock()
-    procs := s.pending
-    s.pending = nil
-    s.mu.Unlock()
+	s.mu.Lock()
+	procs := s.pending
+	s.pending = nil
+	s.mu.Unlock()
 
-    var wg sync.WaitGroup
-    errs := make(chan error, len(procs))
+	var wg sync.WaitGroup
+	errs := make(chan error, len(procs))
 
-    for _, proc := range procs {
-        wg.Add(1)
-        go func(p *Process) {
-            defer wg.Done()
-            if err := p.cmd.Wait(); err != nil {
-                errs <- err
-            }
-        }(proc)
-    }
+	for _, proc := range procs {
+		wg.Add(1)
+		go func(p *Process) {
+			defer wg.Done()
+			if err := p.cmd.Wait(); err != nil {
+				errs <- err
+			}
+		}(proc)
+	}
 
-    wg.Wait()
-    close(errs)
+	wg.Wait()
+	close(errs)
 
-    // return the first error, if any
-    for err := range errs {
-        return err
-    }
+	// return the first error, if any
+	for err := range errs {
+		return err
+	}
 
-    return nil
+	return nil
 }
 
 // like WaitAll but panics on error.
@@ -102,4 +102,3 @@ func (s *Session) startContext(ctx context.Context, c *Cmd) (*Process, error) {
 
 	return proc, nil
 }
-

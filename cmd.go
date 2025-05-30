@@ -102,7 +102,8 @@ func (c *Cmd) Output() ([]byte, error) {
 
 func (c *Cmd) CombinedOutput() ([]byte, error) {
 	cmd := c.Raw()
-	cmd.Stdout = nil; cmd.Stderr = nil;
+	cmd.Stdout = nil
+	cmd.Stderr = nil
 	return cmd.CombinedOutput()
 }
 
@@ -145,4 +146,3 @@ func (c *Cmd) raw(ctx context.Context) *exec.Cmd {
 
 	return raw
 }
-
