@@ -1,16 +1,3 @@
-# Go Command Runner
-
-> A lightweight Go package for managing and orchestrating external commands, inspired by [nob.h](https://github.com/tsoding/nob.h), but reimplemented in Go.
-
-# Quick start
-
-```console
-$ go get github.com/rakivo/nob
-```
-
-# Usage
-> One of the examples from `examples` directory
-```go
 package main
 
 import (
@@ -36,4 +23,3 @@ func main() {
 		fmt.Printf("echo said: %s", out)
 	}
 }
-```
