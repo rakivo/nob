@@ -1,6 +1,7 @@
 package nob
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -8,7 +9,7 @@ import (
 	"strings"
 )
 
-type command struct {
+type Cmd struct {
 	Name   string
 	Args   []string
 	Env    []string
@@ -16,8 +17,8 @@ type command struct {
 	Stderr io.Writer
 }
 
-func Command(name string, args ...string) *command {
-	return &command{
+func Command(name string, args ...string) *Cmd {
+	return &Cmd{
 		Name:   name,
 		Args:   args,
 		Env:    os.Environ(),
@@ -26,35 +27,35 @@ func Command(name string, args ...string) *command {
 	}
 }
 
-func (c *command) WithOutput(out, errOut io.Writer) *command {
+func (c *Cmd) WithOutput(out, errOut io.Writer) *Cmd {
 	c.Stdout = out
 	c.Stderr = errOut
 	return c
 }
 
-func (c *command) WithArgs(cmd ...string) *command {
+func (c *Cmd) WithArgs(cmd ...string) *Cmd {
 	c.Args = append(c.Args, cmd...)
 	return c
 }
 
-func (c *command) WithArgsf(format string, a ...any) *command {
+func (c *Cmd) WithArgsf(format string, a ...any) *Cmd {
 	s := fmt.Sprintf(format, a...)
 	c.Args = append(c.Args, s)
 	return c
 }
 
-func (c *command) WithEnv(v ...string) *command {
+func (c *Cmd) WithEnv(v ...string) *Cmd {
 	c.Env = append(c.Env, v...)
 	return c
 }
 
-func (c *command) WithEnvf(format string, a ...any) *command {
+func (c *Cmd) WithEnvf(format string, a ...any) *Cmd {
 	s := fmt.Sprintf(format, a...)
 	c.Env = append(c.Env, s)
 	return c
 }
 
-func (c *command) Render() string {
+func (c *Cmd) Render() string {
 	var n int
 
 	n += len(c.Name)
@@ -76,37 +77,30 @@ func (c *command) Render() string {
 	return b.String()
 }
 
-func (c *command) Raw() *exec.Cmd {
-	raw := exec.Command(c.Name, c.Args...)
-	raw.Env = append(os.Environ(), c.Env...)
-
-	if c.Stdout != nil {
-		raw.Stdout = c.Stdout
-	}
-
-	if c.Stderr != nil {
-		raw.Stderr = c.Stderr
-	}
-
-	return raw
+func (c *Cmd) RawContext(ctx context.Context) *exec.Cmd {
+	return c.raw(ctx)
 }
 
-func (c *command) Run() error {
+func (c *Cmd) Raw() *exec.Cmd {
+	return c.raw(nil)
+}
+
+func (c *Cmd) Run() error {
 	return c.Raw().Run()
 }
 
-func (c *command) MustRun() {
+func (c *Cmd) MustRun() {
 	if err := c.Raw().Run(); err != nil {
 		panic(err)
 	}
 }
 
-func (c *command) Output() ([]byte, error) {
+func (c *Cmd) Output() ([]byte, error) {
 	cmd := c.Raw()
 	return cmd.Output()
 }
 
-func (c *command) CombinedOutput() ([]byte, error) {
+func (c *Cmd) CombinedOutput() ([]byte, error) {
 	cmd := c.Raw()
 	cmd.Stdout = nil; cmd.Stderr = nil;
 	return cmd.CombinedOutput()
@@ -128,5 +122,27 @@ func Output(name string, args ...string) ([]byte, error) {
 
 func CombinedOutput(name string, args ...string) ([]byte, error) {
 	return Command(name, args...).Raw().CombinedOutput()
+}
+
+func (c *Cmd) raw(ctx context.Context) *exec.Cmd {
+	var raw *exec.Cmd
+
+	if ctx != nil {
+		raw = exec.CommandContext(ctx, c.Name, c.Args...)
+	} else {
+		raw = exec.Command(c.Name, c.Args...)
+	}
+
+	raw.Env = append(os.Environ(), c.Env...)
+
+	if c.Stdout != nil {
+		raw.Stdout = c.Stdout
+	}
+
+	if c.Stderr != nil {
+		raw.Stderr = c.Stderr
+	}
+
+	return raw
 }
 

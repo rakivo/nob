@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"os/exec"
 )
 
 // tracks spawned processes and waits on them.
@@ -23,8 +24,68 @@ func (s *Session) Pending() []*Process {
 
 // starts cmd under ctx, streams live output if configured,
 // registers the resulting Process for later waiting.
-func (s *Session) StartContext(ctx context.Context, c *command) (*Process, error) {
-	raw := c.Raw()
+func (s *Session) StartContext(ctx context.Context, c *Cmd) (*Process, error) {
+	return s.startContext(ctx, c)
+}
+
+func (s *Session) Start(c *Cmd) (*Process, error) {
+	return s.startContext(nil, c)
+}
+
+func (s *Session) MustStart(c *Cmd) *Process {
+	p, err := s.Start(c)
+	if err != nil {
+		panic(err)
+	}
+	return p
+}
+
+// waits for every spawned process
+func (s *Session) WaitAll() error {
+    s.mu.Lock()
+    procs := s.pending
+    s.pending = nil
+    s.mu.Unlock()
+
+    var wg sync.WaitGroup
+    errs := make(chan error, len(procs))
+
+    for _, proc := range procs {
+        wg.Add(1)
+        go func(p *Process) {
+            defer wg.Done()
+            if err := p.cmd.Wait(); err != nil {
+                errs <- err
+            }
+        }(proc)
+    }
+
+    wg.Wait()
+    close(errs)
+
+    // return the first error, if any
+    for err := range errs {
+        return err
+    }
+
+    return nil
+}
+
+// like WaitAll but panics on error.
+func (s *Session) MustWaitAll() {
+	if err := s.WaitAll(); err != nil {
+		panic(err)
+	}
+}
+
+func (s *Session) startContext(ctx context.Context, c *Cmd) (*Process, error) {
+	var raw *exec.Cmd
+
+	if ctx != nil {
+		raw = c.RawContext(ctx)
+	} else {
+		raw = c.Raw()
+	}
 
 	proc := &Process{cmd: raw}
 
@@ -42,42 +103,3 @@ func (s *Session) StartContext(ctx context.Context, c *command) (*Process, error
 	return proc, nil
 }
 
-func (s *Session) Start(c *command) (*Process, error) {
-	return s.StartContext(context.Background(), c)
-}
-
-func (s *Session) MustStart(c *command) *Process {
-	p, err := s.Start(c)
-	if err != nil {
-		panic(err)
-	}
-	return p
-}
-
-// waits for every spawned process in LIFO order.
-func (s *Session) WaitAll() error {
-	for {
-		s.mu.Lock()
-		n := len(s.pending)
-		if n == 0 {
-			s.mu.Unlock()
-			break
-		}
-
-		proc := s.pending[n-1]
-		s.pending = s.pending[:n-1]
-		s.mu.Unlock()
-
-		if err := proc.cmd.Wait(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// WaitAll but panics on error.
-func (s *Session) MustWaitAll() {
-	if err := s.WaitAll(); err != nil {
-		panic(err)
-	}
-}
