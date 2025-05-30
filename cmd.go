@@ -23,7 +23,7 @@ func Command(name string, args ...string) *Cmd {
 		Args:   args,
 		Env:    os.Environ(),
 		Stdout: os.Stdout, // stdout -> stdout
-		Stderr: os.Stdout, // stderr -> stderr
+		Stderr: os.Stdout, // stderr -> stdout
 	}
 }
 
